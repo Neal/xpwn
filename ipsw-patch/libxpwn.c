@@ -57,7 +57,7 @@ void Log(int level, const char* file, unsigned int line, const char* function, c
 			strcpy(mainBuffer, buffer);
 			break;
 		default:
-			snprintf(mainBuffer, sizeof(mainBuffer), "%s:%s:%d: %s", file, function, line, buffer);
+			snprintf(mainBuffer, sizeof(mainBuffer), "%s", buffer);
 	}
 	logCallback(mainBuffer);
 
