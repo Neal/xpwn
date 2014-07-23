@@ -83,6 +83,7 @@ extern "C" {
 	void replaceCertificateImg3(AbstractFile* file, AbstractFile* certificate);
 	void exploit24kpwn(AbstractFile* file);
 	void exploitN8824kpwn(AbstractFile* file);
+	Img3Element* getImg3InfoKbag(AbstractFile* file);
 #ifdef __cplusplus
 }
 #endif

@@ -663,3 +663,29 @@ void exploitN8824kpwn(AbstractFile* file) {
 	info->exploitN8824k = TRUE;
 	info->dirty = TRUE;
 }
+
+Img3Element* getImg3InfoKbag(AbstractFile* file) {
+	Img3Info* info;
+	Img3Element* current;
+
+	if(!file) {
+		return NULL;
+	}
+
+	file->seek(file, 0);
+
+	info = (Img3Info*) malloc(sizeof(Img3Info));
+	info->file = file;
+	info->root = readImg3Element(file);
+	info->kbag = NULL;
+
+	current = (Img3Element*) info->root->data;
+	while(current != NULL) {
+		if(current->header->magic == IMG3_KBAG_MAGIC && ((AppleImg3KBAGHeader*)current->data)->key_modifier == 1) {
+			info->kbag = current;
+		}
+		current = current->next;
+	}
+
+	return info->kbag;
+}

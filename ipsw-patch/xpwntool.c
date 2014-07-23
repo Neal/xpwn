@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <string.h>
+#include <curl/curl.h>
 #include "xpwn/libxpwn.h"
 #include "xpwn/nor_files.h"
+#include "xpwn/img3.h"
 
 #define BUFFERSIZE (1024*1024)
+
+static size_t download_write_callback(void *buffer, size_t size, size_t nmemb, void *userp);
 
 int main(int argc, char* argv[]) {
 	char* inData;
@@ -68,6 +72,45 @@ int main(int argc, char* argv[]) {
 		}
 
 		argNo++;
+	}
+
+	if (!hasKey || !hasIV) {
+		Img3Element* kbag = (Img3Element*) malloc(sizeof(Img3Element));
+		kbag = getImg3InfoKbag(createAbstractFileFromFile(fopen(argv[1], "rb")));
+		uint8_t* keySeed;
+		uint32_t keySeedLen;
+		keySeedLen = 16 + (((AppleImg3KBAGHeader*)kbag->data)->key_bits)/8;
+		keySeed = (uint8_t*) malloc(keySeedLen);
+		memcpy(keySeed, (uint8_t*)((AppleImg3KBAGHeader*)kbag->data) + sizeof(AppleImg3KBAGHeader), keySeedLen);
+		int i = 0;
+		char outputBuffer[256];
+		char curBuffer[256];
+		outputBuffer[0] = '\0';
+		strcat(outputBuffer, "http://api.ineal.me/xpwnkeys/");
+		for(i = 0; i < keySeedLen; i++) {
+			sprintf(curBuffer, "%02x", keySeed[i]);
+			strcat(outputBuffer, curBuffer);
+		}
+		free(keySeed);
+		free(kbag);
+
+		CURL* curl_handle = curl_easy_init();
+		char* response = NULL;
+		curl_easy_setopt(curl_handle, CURLOPT_URL, outputBuffer);
+		curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1);
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, download_write_callback);
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &response);
+		curl_easy_perform(curl_handle);
+		curl_easy_cleanup(curl_handle);
+
+		char* tempIV = strtok(response, ":");
+		char* tempKey = strtok(NULL, ":");
+
+		size_t bytes;
+		hexToInts(tempIV, &iv, &bytes);
+		hexToInts(tempKey, &key, &bytes);
+		hasIV = TRUE;
+		hasKey = TRUE;
 	}
 
 	AbstractFile* inFile;
@@ -144,3 +187,7 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
+static size_t download_write_callback(void *buffer, size_t size, size_t nmemb, void *userp) {
+	char **response_ptr =  (char**)userp;
+	*response_ptr = strndup(buffer, (size_t)(size *nmemb));
+}
